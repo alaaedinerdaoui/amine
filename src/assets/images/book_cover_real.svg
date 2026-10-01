@@ -1,0 +1,247 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" width="600" height="900" style="background:#261d16; font-family:'Amiri', 'Scheherazade New', 'Cairo', serif;">
+  <defs>
+    <!-- Paper texture & gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4a3b2c" />
+      <stop offset="50%" stop-color="#36291e" />
+      <stop offset="100%" stop-color="#241a13" />
+    </linearGradient>
+
+    <linearGradient id="parchmentGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#faf5ea" />
+      <stop offset="100%" stop-color="#eee3cb" />
+    </linearGradient>
+
+    <filter id="cardShadow" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="3" dy="5" stdDeviation="6" flood-color="#000000" flood-opacity="0.45" />
+    </filter>
+
+    <filter id="slightShadow" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="2" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="600" height="900" fill="url(#bgGrad)" />
+
+  <!-- ==================== VINTAGE COLLAGE BACKGROUND ==================== -->
+  
+  <!-- 1. Top-Left: Soviet Victory Banner / Reichstag Silhouette -->
+  <g opacity="0.35" transform="translate(10, 15)">
+    <!-- Building ruins -->
+    <rect x="0" y="80" width="180" height="100" fill="#1c140e" />
+    <polygon points="10,80 30,50 60,80" fill="#1c140e" />
+    <polygon points="70,80 90,40 110,80" fill="#1c140e" />
+    <!-- Victory Flag on rooftop -->
+    <path d="M40,55 L40,15 L110,25 L95,45 L115,55 Z" fill="#991b1b" stroke="#7f1d1d" stroke-width="1.5" />
+    <line x1="40" y1="5" x2="40" y2="70" stroke="#d4d4d8" stroke-width="3" />
+    <!-- Hammer and sickle emblem -->
+    <circle cx="65" cy="30" r="8" fill="none" stroke="#facc15" stroke-width="2" />
+    <path d="M60,35 L70,25" stroke="#facc15" stroke-width="2.5" />
+  </g>
+
+  <!-- 2. Top-Right: Antique Pocket Watch -->
+  <g opacity="0.4" transform="translate(480, 20)">
+    <circle cx="50" cy="65" r="45" fill="#fef3c7" stroke="#b45309" stroke-width="6" />
+    <circle cx="50" cy="65" r="38" fill="none" stroke="#78350f" stroke-width="1.5" />
+    <!-- Watch loop / crown -->
+    <rect x="44" y="12" width="12" height="10" rx="2" fill="#b45309" />
+    <circle cx="50" cy="10" r="10" fill="none" stroke="#b45309" stroke-width="3" />
+    <!-- Clock hands -->
+    <line x1="50" y1="65" x2="50" y2="40" stroke="#451a03" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="50" y1="65" x2="68" y2="60" stroke="#451a03" stroke-width="2" stroke-linecap="round" />
+    <!-- Roman numerals hints -->
+    <text x="50" y="38" font-size="9" font-weight="bold" fill="#78350f" text-anchor="middle">XII</text>
+    <text x="78" y="68" font-size="9" font-weight="bold" fill="#78350f" text-anchor="middle">III</text>
+    <text x="50" y="98" font-size="9" font-weight="bold" fill="#78350f" text-anchor="middle">VI</text>
+    <text x="22" y="68" font-size="9" font-weight="bold" fill="#78350f" text-anchor="middle">IX</text>
+  </g>
+
+  <!-- 3. Top-Right: Antique Hourglass -->
+  <g opacity="0.35" transform="translate(500, 140)">
+    <!-- Wooden top and bottom plates -->
+    <rect x="0" y="0" width="70" height="8" rx="2" fill="#78350f" stroke="#451a03" stroke-width="1.5" />
+    <rect x="0" y="110" width="70" height="8" rx="2" fill="#78350f" stroke="#451a03" stroke-width="1.5" />
+    <line x1="8" y1="8" x2="8" y2="110" stroke="#92400e" stroke-width="3" />
+    <line x1="62" y1="8" x2="62" y2="110" stroke="#92400e" stroke-width="3" />
+    <!-- Glass bulb -->
+    <path d="M14,8 C14,50 32,59 35,59 C38,59 56,50 56,8 Z" fill="#e0f2fe" opacity="0.6" stroke="#0284c7" stroke-width="1.5" />
+    <path d="M14,110 C14,68 32,59 35,59 C38,59 56,68 56,110 Z" fill="#e0f2fe" opacity="0.6" stroke="#0284c7" stroke-width="1.5" />
+    <!-- Sand -->
+    <path d="M22,110 C22,95 35,80 35,80 C35,80 48,95 48,110 Z" fill="#d97706" />
+    <line x1="35" y1="59" x2="35" y2="85" stroke="#d97706" stroke-width="1.5" stroke-dasharray="2 2" />
+  </g>
+
+  <!-- 4. Vintage World Map Grid & Navigation Lines -->
+  <g opacity="0.25" stroke="#d4b996" stroke-width="1" fill="none">
+    <!-- Latitude & Longitude curves -->
+    <ellipse cx="450" cy="550" rx="220" ry="160" />
+    <ellipse cx="450" cy="550" rx="160" ry="160" />
+    <line x1="230" y1="550" x2="670" y2="550" />
+    <line x1="450" y1="390" x2="450" y2="710" />
+    <!-- Compass rose rays -->
+    <circle cx="280" cy="500" r="30" stroke-dasharray="3 3" />
+    <line x1="250" y1="500" x2="310" y2="500" stroke-width="1.5" />
+    <line x1="280" y1="470" x2="280" y2="530" stroke-width="1.5" />
+    <!-- Map labels in antique serif -->
+    <text x="350" y="620" font-size="11" font-family="serif" font-style="italic" fill="#e2d4be">S Ü D L .  E I S M E E R</text>
+    <text x="440" y="580" font-size="11" font-family="serif" font-style="italic" fill="#e2d4be">Tasmanien</text>
+    <text x="520" y="560" font-size="11" font-family="serif" font-style="italic" fill="#e2d4be">Sydney</text>
+    <text x="470" y="490" font-size="12" font-family="serif" font-weight="bold" fill="#e2d4be">PACIFIC OCEAN</text>
+  </g>
+
+  <!-- 5. Bottom-Left Pocket Watch -->
+  <g opacity="0.45" transform="translate(15, 360)">
+    <circle cx="45" cy="55" r="40" fill="#fef9c3" stroke="#a16207" stroke-width="5" />
+    <circle cx="45" cy="55" r="33" fill="none" stroke="#713f12" stroke-width="1.5" />
+    <!-- Crown -->
+    <circle cx="45" cy="10" r="8" fill="none" stroke="#a16207" stroke-width="2.5" />
+    <rect x="41" y="11" width="8" height="6" fill="#a16207" />
+    <!-- Hands -->
+    <line x1="45" y1="55" x2="33" y2="35" stroke="#1c1917" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="45" y1="55" x2="62" y2="55" stroke="#1c1917" stroke-width="2" stroke-linecap="round" />
+  </g>
+
+  <!-- 6. Left Middle Vintage Biplane / Triplane -->
+  <g opacity="0.6" transform="translate(10, 520) scale(0.9)">
+    <!-- Wings (triplane 3 tiers) -->
+    <rect x="0" y="0" width="280" height="12" rx="3" fill="#d97706" stroke="#78350f" stroke-width="1.5" />
+    <rect x="0" y="32" width="280" height="12" rx="3" fill="#d97706" stroke="#78350f" stroke-width="1.5" />
+    <rect x="0" y="64" width="280" height="12" rx="3" fill="#d97706" stroke="#78350f" stroke-width="1.5" />
+    <!-- Struts -->
+    <line x1="50" y1="12" x2="50" y2="64" stroke="#451a03" stroke-width="3" />
+    <line x1="120" y1="12" x2="120" y2="64" stroke="#451a03" stroke-width="3" />
+    <line x1="220" y1="12" x2="220" y2="64" stroke="#451a03" stroke-width="3" />
+    <!-- Engine cowling & Propeller -->
+    <ellipse cx="170" cy="70" rx="30" ry="25" fill="#334155" stroke="#0f172a" stroke-width="2" />
+    <circle cx="170" cy="70" r="10" fill="#94a3b8" />
+    <line x1="130" y1="70" x2="210" y2="70" stroke="#e2e8f0" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  <!-- 7. Center-Right WWII Heavy Bomber (Flying in 3/4 perspective) -->
+  <g transform="translate(250, 420) scale(0.95)" filter="url(#slightShadow)">
+    <!-- Fuselage -->
+    <path d="M30,55 C80,45 220,50 320,80 C325,82 320,95 300,95 C200,90 100,85 30,75 Z" fill="#9a7b45" stroke="#544020" stroke-width="2" />
+    <!-- Cockpit glass -->
+    <path d="M55,52 C70,48 90,48 95,55 Z" fill="#bae6fd" stroke="#0369a1" stroke-width="1" />
+    <!-- Main Swept Wings -->
+    <path d="M100,60 L240,-10 L280,-8 L170,75 Z" fill="#846838" stroke="#544020" stroke-width="2" />
+    <path d="M130,80 L290,135 L260,140 L160,85 Z" fill="#71582f" stroke="#544020" stroke-width="2" />
+    <!-- Twin Engine nacelles with props -->
+    <ellipse cx="140" cy="40" rx="20" ry="10" fill="#604c27" stroke="#33240e" stroke-width="1.5" />
+    <ellipse cx="190" cy="20" rx="18" ry="9" fill="#604c27" stroke="#33240e" stroke-width="1.5" />
+    <ellipse cx="160" cy="95" rx="22" ry="11" fill="#604c27" stroke="#33240e" stroke-width="1.5" />
+    <ellipse cx="215" cy="115" rx="18" ry="9" fill="#604c27" stroke="#33240e" stroke-width="1.5" />
+    <!-- Aircraft insignia star & markings -->
+    <text x="185" y="80" font-size="18" font-family="sans-serif" font-weight="900" fill="#f1f5f9" opacity="0.85">EN</text>
+    <circle cx="240" cy="85" r="9" fill="#1e3a8a" />
+    <polygon points="240,78 242,83 247,84 243,87 245,92 240,89 235,92 237,87 233,84 238,83" fill="#ffffff" />
+  </g>
+
+  <!-- 8. Bottom-Right Soldiers / Trench Warfare Illustration -->
+  <g opacity="0.5" transform="translate(320, 720)">
+    <!-- Trench soldier silhouette -->
+    <ellipse cx="60" cy="25" rx="15" ry="12" fill="#57534e" /> <!-- Helmet -->
+    <path d="M50,30 L30,90 L75,90 L70,30 Z" fill="#78716c" />
+    <line x1="20" y1="20" x2="90" y2="70" stroke="#292524" stroke-width="3" /> <!-- Rifle -->
+    <!-- Vintage engraving relief -->
+    <circle cx="170" cy="50" r="35" fill="none" stroke="#d6c3aa" stroke-width="1.5" />
+  </g>
+
+  <!-- ==================== MAIN TOP PAPER NOTEPAD (TORN SHEET) ==================== -->
+  <g transform="translate(150, 125)" filter="url(#cardShadow)">
+    <!-- Torn/ragged paper shape -->
+    <path d="M0,8 
+             Q15,5 30,8 T60,5 T90,8 T120,6 T150,9 T180,6 T210,8 T240,5 T270,8 T300,6 T330,8 T355,5
+             L355,290 
+             Q340,293 325,290 T295,293 T265,290 T235,294 T205,290 T175,293 T145,290 T115,294 T85,290 T55,293 T25,290 T0,293
+             Z" 
+          fill="url(#parchmentGrad)" stroke="#cbb898" stroke-width="1.5" />
+
+    <!-- Ruled blue school notebook lines -->
+    <g stroke="#93c5fd" stroke-width="1" opacity="0.45">
+      <line x1="15" y1="40" x2="340" y2="40" />
+      <line x1="15" y1="75" x2="340" y2="75" />
+      <line x1="15" y1="110" x2="340" y2="110" />
+      <line x1="15" y1="145" x2="340" y2="145" />
+      <line x1="15" y1="180" x2="340" y2="180" />
+      <line x1="15" y1="215" x2="340" y2="215" />
+      <line x1="15" y1="250" x2="340" y2="250" />
+    </g>
+
+    <!-- Red notebook margin line on right for Arabic writing -->
+    <line x1="315" y1="15" x2="315" y2="280" stroke="#f87171" stroke-width="1.5" opacity="0.6" />
+
+    <!-- Notebook Binder Punch Holes on the left -->
+    <circle cx="15" cy="55" r="5" fill="#36291e" opacity="0.3" />
+    <circle cx="15" cy="145" r="5" fill="#36291e" opacity="0.3" />
+    <circle cx="15" cy="235" r="5" fill="#36291e" opacity="0.3" />
+
+    <!-- ==================== MAIN TITLE TEXT ==================== -->
+    <text x="175" y="70" font-size="34" font-weight="800" fill="#451a03" text-anchor="middle" direction="rtl">
+      تلخيص كل دروس
+    </text>
+
+    <text x="175" y="125" font-size="36" font-weight="900" fill="#3f1906" text-anchor="middle" direction="rtl">
+      التاريخ والجغرافيا
+    </text>
+
+    <!-- Red Plus Sign Symbol -->
+    <text x="175" y="168" font-size="36" font-weight="900" fill="#991b1b" text-anchor="middle">
+      +
+    </text>
+
+    <!-- Subtitle Bullet 1 -->
+    <text x="175" y="210" font-size="22" font-weight="800" fill="#5c2d12" text-anchor="middle" direction="rtl">
+      خرائط ذهنية وجميع
+    </text>
+
+    <!-- Subtitle Bullet 2 -->
+    <text x="175" y="250" font-size="22" font-weight="800" fill="#5c2d12" text-anchor="middle" direction="rtl">
+      المصطلحات والمفاهيم
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM NOTEPAD (STREAM & AUTHOR) ==================== -->
+  <g transform="translate(45, 680)" filter="url(#cardShadow)">
+    <!-- Torn paper backing -->
+    <path d="M0,6
+             Q15,3 30,6 T60,3 T90,6 T120,4 T150,7 T180,4 T210,7 T240,4 T270,7 T290,4
+             L290,140
+             Q275,143 260,140 T230,143 T200,140 T170,144 T140,140 T110,143 T80,140 T50,144 T20,140 T0,143
+             Z" 
+          fill="url(#parchmentGrad)" stroke="#cbb898" stroke-width="1.5" />
+
+    <!-- Ruled lines -->
+    <g stroke="#93c5fd" stroke-width="1" opacity="0.4">
+      <line x1="15" y1="35" x2="275" y2="35" />
+      <line x1="15" y1="70" x2="275" y2="70" />
+      <line x1="15" y1="105" x2="275" y2="105" />
+    </g>
+
+    <!-- Red notebook margin -->
+    <line x1="260" y1="10" x2="260" y2="135" stroke="#f87171" stroke-width="1.5" opacity="0.6" />
+
+    <!-- Stream title in bold vibrant red -->
+    <text x="140" y="45" font-size="29" font-weight="900" fill="#dc2626" text-anchor="middle" direction="rtl">
+      بكالوريا
+    </text>
+
+    <text x="140" y="82" font-size="31" font-weight="900" fill="#dc2626" text-anchor="middle" direction="rtl">
+      إقتصاد وتصرف
+    </text>
+
+    <!-- Author's name -->
+    <text x="140" y="122" font-size="19" font-weight="800" fill="#18181b" text-anchor="middle" direction="rtl">
+      تأليف : محمد أمين حسايني
+    </text>
+  </g>
+
+  <!-- ==================== REALISTIC BOOK SPINE HIGHLIGHT & BINDING ==================== -->
+  <!-- Left edge shadow -->
+  <rect x="0" y="0" width="8" height="900" fill="#000000" opacity="0.4" />
+  <rect x="8" y="0" width="4" height="900" fill="#ffffff" opacity="0.08" />
+  
+  <!-- Outer subtle book border -->
+  <rect x="1" y="1" width="598" height="898" fill="none" stroke="#543c2a" stroke-width="2" rx="4" />
+</svg>

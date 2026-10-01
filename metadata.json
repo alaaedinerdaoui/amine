@@ -1,0 +1,6 @@
+{
+  "name": "كتاب الملخصات - تاريخ وجغرافيا باك اقتصاد وتصرف",
+  "description": "الموقع الرسمي لكتاب الملخصات في التاريخ والجغرافيا المخصص لتلامذة باكالوريا اقتصاد وتصرف في تونس.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
