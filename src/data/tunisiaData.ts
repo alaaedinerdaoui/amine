@@ -1,3 +1,7 @@
+import bookCoverImg from '../assets/images/book_cover.jpg';
+import historyPreviewSvg from '../assets/images/preview_history_real.svg';
+import geographyPreviewSvg from '../assets/images/preview_geography_real.svg';
+
 export interface Governorate {
   id: string;
   nameAr: string;
@@ -158,16 +162,18 @@ export const BOOK_DETAILS = {
   stream: "باكالوريا اقتصاد وتصرف (Économie & Gestion)",
   subjects: "التاريخ والجغرافيا (Histoire & Géographie)",
   edition: "طبعة تحضيرية خاصة بالباكالوريا التونسية 2026",
-  basePrice: 49,
-  shippingCost: 7,
+  basePrice: 41,
+  shippingCost: 8,
+  singleShippingCost: 8,
+  multiShippingCost: 7,
   currency: "د.ت",
   author: "محمد أمين حسايني",
-  coverImage: "https://i.pinimg.com/736x/5a/06/fd/5a06fd306980d386b459f0a8f47cdcc1.jpg",
-  historyPreviewImage: "/src/assets/images/preview_history_real.svg",
-  geographyPreviewImage: "/src/assets/images/preview_geography_real.svg",
+  coverImage: bookCoverImg,
+  historyPreviewImage: historyPreviewSvg,
+  geographyPreviewImage: geographyPreviewSvg,
   featuresCount: 4,
   totalPagesApprox: "140 صفحة منظمة ومطبوعة بجودة ممتازة",
-  deliveryNote: "الدفع عند الاستلام - توصيل سريع مع تأكيد عبر الهاتف",
+  deliveryNote: "الدفع عند الاستلام - سعر الكتاب 41 د.ت (49 د.ت مع التوصيل، وعند طلب نسختين 89 د.ت فقط)",
   supportPhone: "98 123 456",
   whatsappNumber: "+21698123456"
 };

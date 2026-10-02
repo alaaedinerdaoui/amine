@@ -33,7 +33,8 @@ export function OrderSection() {
   const selectedGov = TUNISIAN_GOVERNORATES.find(g => g.id === governorate) || TUNISIAN_GOVERNORATES[0];
 
   const bookUnitPrice = BOOK_DETAILS.basePrice;
-  const shippingFee = BOOK_DETAILS.shippingCost;
+  // 1 copy: 41 + 8 = 49 DT. 2 copies: 41*2 + 7 = 89 DT. 3+ copies: 41*quantity + 7 DT.
+  const shippingFee = quantity === 1 ? (BOOK_DETAILS.singleShippingCost ?? 8) : (BOOK_DETAILS.multiShippingCost ?? 7);
   const itemsTotal = bookUnitPrice * quantity;
   const orderTotal = itemsTotal + shippingFee;
 
@@ -191,7 +192,9 @@ export function OrderSection() {
               </div>
               <div className="flex justify-between py-1 border-b border-[#E8DEC9]">
                 <span className="text-[#6E5D4F]">مصاريف التوصيل:</span>
-                <span className="font-mono text-[#2A1F18]">{submittedOrder.shippingCost} {BOOK_DETAILS.currency}</span>
+                <span className="font-mono text-[#15803D] font-bold">
+                  {submittedOrder.shippingCost === 0 ? 'مجاني (مشمول في السعر)' : `${submittedOrder.shippingCost} ${BOOK_DETAILS.currency}`}
+                </span>
               </div>
               <div className="flex justify-between py-2 text-base font-bold text-[#7C2529]">
                 <span>المبلغ الجملي عند الاستلام:</span>
@@ -252,10 +255,16 @@ export function OrderSection() {
                   <p className="text-xs text-[#6C5B4E]">
                     ملخصات التاريخ والجغرافيا كاملة
                   </p>
-                  <div className="pt-1">
-                    <span className="text-xl font-bold font-mono text-[#7C2529]">
-                      {bookUnitPrice} {BOOK_DETAILS.currency}
-                    </span>
+                  <div className="pt-1 flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-bold font-mono text-[#7C2529]">
+                        {bookUnitPrice} {BOOK_DETAILS.currency}
+                      </span>
+                      <span className="text-xs text-[#6C5B4E]">سعر النسخة بمفردها</span>
+                    </div>
+                    <div className="text-[11px] text-[#1D7438] font-medium bg-[#EBF5EE] px-2 py-0.5 rounded border border-[#CDE5D4] inline-block w-fit">
+                      49 د.ت مع التوصيل (89 د.ت فقط عند طلب نسختين)
+                    </div>
                   </div>
                 </div>
               </div>
@@ -263,20 +272,27 @@ export function OrderSection() {
               {/* Price Calculation Box */}
               <div className="border-t border-b border-[#EAE0D0] py-3 space-y-2 text-xs">
                 <div className="flex justify-between text-[#5C4A3C]">
-                  <span>سعر الكتاب:</span>
-                  <span className="font-mono tabular-nums">{bookUnitPrice} {BOOK_DETAILS.currency}</span>
+                  <span>سعر الكتاب ({quantity} {quantity > 1 ? 'نسخ' : 'نسخة'} × {bookUnitPrice} د.ت):</span>
+                  <span className="font-mono tabular-nums font-semibold">{itemsTotal} {BOOK_DETAILS.currency}</span>
                 </div>
                 <div className="flex justify-between text-[#5C4A3C]">
                   <span>الكمية المطلوبة:</span>
-                  <span className="font-mono tabular-nums">{quantity}</span>
+                  <span className="font-mono tabular-nums">{quantity} {quantity > 1 ? 'نسخ' : 'نسخة'}</span>
                 </div>
                 <div className="flex justify-between text-[#5C4A3C]">
-                  <span>مصاريف التوصيل:</span>
-                  <span className="font-mono tabular-nums">{shippingFee} {BOOK_DETAILS.currency}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span>مصاريف التوصيل:</span>
+                    {quantity >= 2 && (
+                      <span className="text-[10px] bg-[#EBF5EE] text-[#1D7438] px-1.5 py-0.5 rounded font-semibold border border-[#CDE5D4]">تخفيض في التوصيل</span>
+                    )}
+                  </div>
+                  <span className="font-mono tabular-nums font-bold text-[#2A1F18]">
+                    {shippingFee} {BOOK_DETAILS.currency}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm font-bold text-[#2A1F18] pt-2 border-t border-[#EAE0D0]">
-                  <span>المبلغ الجملي:</span>
-                  <span className="font-mono text-base text-[#7C2529] tabular-nums">{orderTotal} {BOOK_DETAILS.currency}</span>
+                  <span>المبلغ الجملي عند الاستلام:</span>
+                  <span className="font-mono text-lg text-[#7C2529] tabular-nums font-black">{orderTotal} {BOOK_DETAILS.currency}</span>
                 </div>
               </div>
 

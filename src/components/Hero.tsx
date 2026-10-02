@@ -140,9 +140,14 @@ export function Hero({ onOrderClick, onExploreClick }: HeroProps) {
                   <span className="font-serif-book font-semibold text-[#2A1F18]">
                     تأليف: محمد أمين حسايني
                   </span>
-                  <span className="font-mono text-[#7C2529] font-bold">
-                    {BOOK_DETAILS.basePrice} {BOOK_DETAILS.currency}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-[#7C2529] font-bold text-sm">
+                      {BOOK_DETAILS.basePrice} {BOOK_DETAILS.currency}
+                    </span>
+                    <span className="text-[10px] text-[#1D7438] bg-[#EBF5EE] border border-[#CDE5D4] px-1.5 py-0.5 rounded font-medium">
+                      49 د.ت مع التوصيل
+                    </span>
+                  </div>
                 </div>
 
               </div>
