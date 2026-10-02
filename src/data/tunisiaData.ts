@@ -175,5 +175,7 @@ export const BOOK_DETAILS = {
   totalPagesApprox: "140 صفحة منظمة ومطبوعة بجودة ممتازة",
   deliveryNote: "الدفع عند الاستلام - سعر الكتاب 41 د.ت (49 د.ت مع التوصيل، وعند طلب نسختين 89 د.ت فقط)",
   supportPhone: "98 123 456",
-  whatsappNumber: "+21698123456"
+  whatsappNumber: "+21698123456",
+  instagramUrl: "https://www.instagram.com/talakhis_amin/",
+  facebookUrl: "https://www.facebook.com/friends/requests/?profile_id=61594593909694"
 };

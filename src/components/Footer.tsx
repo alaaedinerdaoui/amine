@@ -67,27 +67,27 @@ export function Footer({ onAdminClick }: FooterProps) {
             </h4>
             <div className="flex items-center gap-3">
               <a
-                href="https://facebook.com"
+                href={BOOK_DETAILS.facebookUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="w-8 h-8 rounded bg-[#33241B] border border-[#483528] flex items-center justify-center text-[#D8CFBF] hover:text-[#1877F2] hover:border-[#1877F2] transition-colors"
-                aria-label="Facebook"
+                aria-label="صفحة الفيسبوك"
               >
                 <Facebook className="w-4 h-4" />
               </a>
               <a
-                href="https://instagram.com"
+                href={BOOK_DETAILS.instagramUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="w-8 h-8 rounded bg-[#33241B] border border-[#483528] flex items-center justify-center text-[#D8CFBF] hover:text-[#E4405F] hover:border-[#E4405F] transition-colors"
-                aria-label="Instagram"
+                aria-label="حساب الإنستغرام talakhis_amin"
               >
                 <Instagram className="w-4 h-4" />
               </a>
               <a
                 href={`https://wa.me/${BOOK_DETAILS.whatsappNumber.replace(/[^0-9]/g, '')}`}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="w-8 h-8 rounded bg-[#33241B] border border-[#483528] flex items-center justify-center text-[#D8CFBF] hover:text-[#25D366] hover:border-[#25D366] transition-colors"
                 aria-label="WhatsApp"
               >
