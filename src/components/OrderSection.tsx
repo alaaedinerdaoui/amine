@@ -91,7 +91,7 @@ export function OrderSection() {
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const orderId = `BAC-${Math.floor(100000 + Math.random() * 900000)}`;
       const orderData = {
         orderId,
@@ -114,7 +114,11 @@ export function OrderSection() {
       };
 
       // Save via centralized storage helper
-      saveOrder(orderData);
+      try {
+        await saveOrder(orderData);
+      } catch (e) {
+        console.error('Error saving order', e);
+      }
 
       setIsSubmitting(false);
       setSubmittedOrder(orderData);

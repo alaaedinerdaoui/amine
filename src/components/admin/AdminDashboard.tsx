@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   getStoredOrders, 
   updateOrderStatus, 
   deleteOrder, 
   exportOrdersToCSV, 
+  syncOrdersFromAPI,
+  clearAllOrders,
   Order 
 } from '../../data/orderStorage';
 import { BOOK_DETAILS, TUNISIAN_GOVERNORATES } from '../../data/tunisiaData';
@@ -28,7 +30,9 @@ import {
   Unlock, 
   FileSpreadsheet,
   Printer,
-  ChevronDown
+  ChevronDown,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -40,6 +44,8 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,7 +60,26 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
   const [printableOrder, setPrintableOrder] = useState<Order | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  // Load orders on mount
+  const loadOrders = useCallback(async (showLoading = false) => {
+    if (showLoading) setIsRefreshing(true);
+    // Instant local load first
+    const local = getStoredOrders();
+    setOrders(local);
+
+    // Sync with backend API
+    try {
+      const synced = await syncOrdersFromAPI();
+      setOrders(synced);
+    } catch (err) {
+      console.error('Failed to sync orders:', err);
+    } finally {
+      if (showLoading) {
+        setTimeout(() => setIsRefreshing(false), 400);
+      }
+    }
+  }, []);
+
+  // Load orders and listen for real-time order creation across tabs and components
   useEffect(() => {
     // Check if already authenticated in this session
     const authSession = sessionStorage.getItem('bac_admin_auth');
@@ -62,12 +87,36 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
       setIsAuthenticated(true);
     }
     loadOrders();
-  }, []);
 
-  const loadOrders = () => {
-    const list = getStoredOrders();
-    setOrders(list);
-  };
+    const handleUpdate = () => {
+      loadOrders();
+    };
+
+    window.addEventListener('bac_order_added', handleUpdate);
+    window.addEventListener('bac_orders_changed', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('bac_orders_sync_channel');
+      channel.onmessage = () => {
+        loadOrders();
+      };
+    } catch {}
+
+    // Auto-refresh every 5 seconds to catch orders from other devices/browsers
+    const interval = setInterval(() => {
+      loadOrders();
+    }, 5000);
+
+    return () => {
+      window.removeEventListener('bac_order_added', handleUpdate);
+      window.removeEventListener('bac_orders_changed', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+      if (channel) channel.close();
+      clearInterval(interval);
+    };
+  }, [loadOrders]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,27 +125,34 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
       setIsAuthenticated(true);
       sessionStorage.setItem('bac_admin_auth', 'true');
       setPasswordError(false);
+      loadOrders(true);
     } else {
       setPasswordError(true);
     }
   };
 
-  const handleStatusChange = (orderId: string, newStatus: Order['status']) => {
-    updateOrderStatus(orderId, newStatus);
-    loadOrders();
+  const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
+    await updateOrderStatus(orderId, newStatus);
+    await loadOrders();
   };
 
-  const handleDelete = (orderId: string) => {
-    deleteOrder(orderId);
+  const handleDelete = async (orderId: string) => {
+    await deleteOrder(orderId);
     setConfirmDeleteId(null);
-    loadOrders();
+    await loadOrders();
   };
 
-  const handleSaveNote = (orderId: string) => {
-    updateOrderStatus(orderId, orders.find(o => o.orderId === orderId)?.status || 'new', noteText);
+  const handleClearAll = async () => {
+    await clearAllOrders();
+    setConfirmClearAll(false);
+    await loadOrders();
+  };
+
+  const handleSaveNote = async (orderId: string) => {
+    await updateOrderStatus(orderId, orders.find(o => o.orderId === orderId)?.status || 'new', noteText);
     setEditingNoteId(null);
     setNoteText('');
-    loadOrders();
+    await loadOrders();
   };
 
   // Filtered orders list
@@ -254,9 +310,32 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Refresh Button */}
+            <button
+              onClick={() => loadOrders(true)}
+              disabled={isRefreshing}
+              className="bg-[#38281F] hover:bg-[#4E372A] text-[#D8CFBF] text-xs px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="تحديث فوري لقائمة الطلبيات"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#C09540]' : ''}`} />
+              <span className="hidden sm:inline">{isRefreshing ? 'جارٍ التحديث...' : 'تحديث'}</span>
+            </button>
+
+            {orders.length > 0 && (
+              <button
+                onClick={() => setConfirmClearAll(true)}
+                className="bg-[#38281F] hover:bg-[#5C2323] text-[#FCA5A5] text-xs px-2.5 py-1.5 rounded flex items-center gap-1 transition-colors cursor-pointer"
+                title="مسح جميع الطلبيات المسجلة"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">إفراغ القائمة</span>
+              </button>
+            )}
+
             <button
               onClick={exportOrdersToCSV}
-              className="bg-[#C09540] hover:bg-[#A98132] text-[#241A14] text-xs font-semibold px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+              disabled={orders.length === 0}
+              className="bg-[#C09540] hover:bg-[#A98132] disabled:opacity-50 text-[#241A14] text-xs font-semibold px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
               title="تصدير ملف إكسل لشركات التوصيل"
             >
               <Download className="w-3.5 h-3.5" />
@@ -407,10 +486,29 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
             )}
           </div>
 
-          {filteredOrders.length === 0 ? (
+          {orders.length === 0 ? (
+            <div className="p-16 text-center text-[#705F51] space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-full bg-[#F3EAD9] flex items-center justify-center text-[#7C2529]">
+                <ShoppingBag className="w-8 h-8" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-base font-bold text-[#2A1F18]">لا توجد طلبيات مسجلة بعد</p>
+                <p className="text-xs text-[#8C7A6B] max-w-md mx-auto leading-relaxed">
+                  تم إفراغ الطلبيات الافتراضية بنجاح. أي طلبية جديدة يسجلها التلميذ أو الزائر في الموقع ستظهر هنا فوراً وتلقائياً دون الحاجة لتحديث الصفحة.
+                </p>
+              </div>
+              <button
+                onClick={onBackToSite}
+                className="vintage-button px-5 py-2.5 text-xs rounded font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow"
+              >
+                <span>العودة للموقع وتجربة تسجيل طلب</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : filteredOrders.length === 0 ? (
             <div className="p-12 text-center text-[#705F51] space-y-3">
               <ShoppingBag className="w-10 h-10 mx-auto text-[#D5C6AF]" />
-              <p className="text-sm font-semibold">لا توجد طلبيات تطابق هذا البحث</p>
+              <p className="text-sm font-semibold">لا توجد طلبيات تطابق هذا البحث أو الفلتر</p>
               <p className="text-xs text-[#8C7A6B]">جرب تغيير فلاتر الحالة أو مسح نص البحث</p>
             </div>
           ) : (
@@ -683,6 +781,47 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>طباعة الوصل</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear All Confirmation Modal */}
+      {confirmClearAll && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm p-4 flex items-center justify-center animate-in fade-in"
+          onClick={() => setConfirmClearAll(false)}
+        >
+          <div 
+            className="bg-[#FCFAF6] border border-[#D5C6AF] max-w-sm w-full p-6 rounded shadow-2xl relative space-y-4 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-full bg-[#FEE2E2] text-[#B91C1C] flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-serif-book font-bold text-base text-[#2A1F18]">
+                هل أنت متأكد من مسح جميع الطلبيات؟
+              </h3>
+              <p className="text-xs text-[#786656]">
+                سيتم حذف كافة الطلبيات الحالية من الذاكرة والسيرفر نهائياً وتصفير القائمة.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmClearAll(false)}
+                className="px-4 py-2 text-xs border border-[#D5C6AF] rounded text-[#5C4A3C] hover:bg-[#F2E8D7] cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="px-4 py-2 text-xs bg-[#B91C1C] text-white font-bold rounded hover:bg-[#991B1B] cursor-pointer"
+              >
+                تأكيد المسح
               </button>
             </div>
           </div>
