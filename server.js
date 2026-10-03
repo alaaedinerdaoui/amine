@@ -70,6 +70,11 @@ app.post('/api/orders', (req, res) => {
   const updated = [newOrder, ...filtered];
   writeOrdersToFile(updated);
 
+  // Automatically dispatch to Shipper API in background without blocking response
+  autoDispatchToShipper(newOrder).catch(err => {
+    console.warn('Shipper background dispatch error:', err.message);
+  });
+
   res.status(201).json({ success: true, order: newOrder });
 });
 
@@ -110,6 +115,373 @@ app.delete('/api/orders/:id', (req, res) => {
 app.delete('/api/orders', (req, res) => {
   writeOrdersToFile([]);
   res.json({ success: true, message: 'All orders cleared' });
+});
+
+// Shipper Network API Configuration
+const SHIPPER_API_KEY = process.env.SHIPPER_API_KEY || '558795|zBHJkI2s2t1H8mtM7hK2heBtn35LQB3Yrs0LnyFF';
+const SHIPPER_BASE_URL = process.env.SHIPPER_API_URL || 'https://app.shipper.market/api/v1';
+const SHIPPER_DASHBOARD_URL = process.env.SHIPPER_DASHBOARD_URL || 'https://app.shipper.market/';
+
+const GOV_MAP = {
+  'تونس': 'Tunis',
+  'أريانة': 'Ariana',
+  'بن عروس': 'Ben Arous',
+  'منوبة': 'La Manouba',
+  'نابل': 'Nabeul',
+  'بنزرت': 'Bizerte',
+  'باجة': 'Béja',
+  'جندوبة': 'Jendouba',
+  'زغوان': 'Zaghouan',
+  'سليانة': 'Siliana',
+  'الكاف': 'Le Kef',
+  'سوسة': 'Sousse',
+  'المنستير': 'Monastir',
+  'المهدية': 'Mahdia',
+  'صفاقس': 'Sfax',
+  'القيروان': 'Kairouan',
+  'القصرين': 'Kasserine',
+  'سيدي بوزيد': 'Sidi Bouzid',
+  'قابس': 'Gabès',
+  'مدنين': 'Médenine',
+  'تطاوين': 'Tataouine',
+  'قفصة': 'Gafsa',
+  'توزر': 'Tozeur',
+  'قبلي': 'Kébili'
+};
+
+/**
+ * Automatically dispatch an order to Shipper via API key
+ */
+async function autoDispatchToShipper(order) {
+  if (!order || !order.orderId || !order.fullName || !order.phoneNumber) {
+    return { success: false, error: 'Missing required order fields' };
+  }
+
+  try {
+    // 1. Check if user has an existing product UUID on Shipper
+    let productUuid = null;
+    try {
+      const prodRes = await fetch(`${SHIPPER_BASE_URL}/products?per_page=1`, {
+        headers: {
+          'Authorization': `Bearer ${SHIPPER_API_KEY}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
+        if (Array.isArray(prodData.data) && prodData.data.length > 0) {
+          productUuid = prodData.data[0].id || prodData.data[0].uuid;
+        }
+      }
+    } catch {}
+
+    const cleanGov = (order.governorateName || '').trim();
+    const shipperDivision1 = GOV_MAP[cleanGov] || cleanGov || 'Tunis';
+
+    const cleanPhone = (order.phoneNumber || '').replace(/[^0-9]/g, '');
+    const cleanPhone2 = order.secondPhoneNumber ? (order.secondPhoneNumber || '').replace(/[^0-9]/g, '') : null;
+
+    const payload = {
+      address: {
+        name: order.fullName,
+        division_1: shipperDivision1,
+        division_2: order.delegation || null,
+        phone1: cleanPhone,
+        phone2: cleanPhone2 || null,
+        address1: order.address,
+        address2: null,
+        country: 'TN'
+      },
+      items: [
+        {
+          quantity: order.quantity || 1,
+          total_price: (order.bookPrice || 41) * (order.quantity || 1),
+          ...(productUuid ? { id: productUuid } : {})
+        }
+      ],
+      shipping_total: order.shippingCost ?? 8,
+      is_cod: true,
+      auto_fulfill: false,
+      with_confirmation: true,
+      store_name: 'كتاب ملخصات التاريخ والجغرافيا',
+      external_order_id: order.orderId,
+      external_order_url: SHIPPER_DASHBOARD_URL
+    };
+
+    const shipperRes = await fetch(`${SHIPPER_BASE_URL}/orders`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SHIPPER_API_KEY}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const shipperData = await shipperRes.json();
+
+    if (shipperRes.ok && (shipperData.id || shipperData.order?.id)) {
+      const shipperId = shipperData.id || shipperData.order?.id;
+      const orders = readOrdersFromFile();
+      const updated = orders.map(o => {
+        if (o.orderId === order.orderId) {
+          return {
+            ...o,
+            shipperStatus: 'synced',
+            shipperOrderId: shipperId,
+            shipperSyncedAt: Date.now()
+          };
+        }
+        return o;
+      });
+      writeOrdersToFile(updated);
+
+      return {
+        success: true,
+        shipperOrderId: shipperId,
+        message: 'تم إرسال الطلبية تلقائياً إلى منصة Shipper'
+      };
+    } else {
+      const errMsg = shipperData.message || (shipperData.errors ? JSON.stringify(shipperData.errors) : `HTTP ${shipperRes.status}`);
+      const orders = readOrdersFromFile();
+      const updated = orders.map(o => {
+        if (o.orderId === order.orderId) {
+          return {
+            ...o,
+            shipperStatus: 'failed',
+            shipperError: errMsg
+          };
+        }
+        return o;
+      });
+      writeOrdersToFile(updated);
+
+      return {
+        success: false,
+        error: errMsg,
+        details: shipperData
+      };
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: err.message
+    };
+  }
+}
+
+// Sync an order endpoint (can be called automatically or by system)
+app.post('/api/shipper/sync', async (req, res) => {
+  const result = await autoDispatchToShipper(req.body);
+  if (result.success) {
+    return res.status(200).json(result);
+  }
+  return res.status(200).json(result);
+});
+
+// Check Shipper connection & statistics
+app.get('/api/shipper/status', async (req, res) => {
+  try {
+    const ordersRes = await fetch(`${SHIPPER_BASE_URL}/orders?per_page=1`, {
+      headers: {
+        'Authorization': `Bearer ${SHIPPER_API_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!ordersRes.ok) {
+      return res.status(ordersRes.status).json({
+        connected: false,
+        message: 'فشل الاتصال بـ Shipper',
+        status: ordersRes.status
+      });
+    }
+
+    const ordersData = await ordersRes.json();
+    
+    // Also check products
+    let productsCount = 0;
+    try {
+      const prodRes = await fetch(`${SHIPPER_BASE_URL}/products?per_page=1`, {
+        headers: {
+          'Authorization': `Bearer ${SHIPPER_API_KEY}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
+        productsCount = prodData.pagination?.total || (Array.isArray(prodData.data) ? prodData.data.length : 0);
+      }
+    } catch {}
+
+    res.json({
+      connected: true,
+      totalOrders: ordersData.pagination?.total ?? (Array.isArray(ordersData.data) ? ordersData.data.length : 0),
+      productsCount,
+      message: 'تم الاتصال بنجاح مع منصة Shipper Network'
+    });
+  } catch (err) {
+    res.status(500).json({
+      connected: false,
+      message: 'خطأ في الاتصال بسيرفر Shipper',
+      error: err.message
+    });
+  }
+});
+
+// Fetch orders directly from Shipper
+app.get('/api/shipper/orders', async (req, res) => {
+  try {
+    const apiRes = await fetch(`${SHIPPER_BASE_URL}/orders?per_page=50`, {
+      headers: {
+        'Authorization': `Bearer ${SHIPPER_API_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+    const data = await apiRes.json();
+    res.status(apiRes.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Fetch products from Shipper
+app.get('/api/shipper/products', async (req, res) => {
+  try {
+    const apiRes = await fetch(`${SHIPPER_BASE_URL}/products?per_page=50`, {
+      headers: {
+        'Authorization': `Bearer ${SHIPPER_API_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+    const data = await apiRes.json();
+    res.status(apiRes.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Sync an order to Shipper Open API
+app.post('/api/shipper/sync', async (req, res) => {
+  const order = req.body;
+  if (!order || !order.orderId || !order.fullName || !order.phoneNumber) {
+    return res.status(400).json({ error: 'Missing required order fields' });
+  }
+
+  try {
+    // 1. Check if user has an existing product UUID on Shipper
+    let productUuid = null;
+    try {
+      const prodRes = await fetch(`${SHIPPER_BASE_URL}/products?per_page=1`, {
+        headers: {
+          'Authorization': `Bearer ${SHIPPER_API_KEY}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
+        if (Array.isArray(prodData.data) && prodData.data.length > 0) {
+          productUuid = prodData.data[0].id || prodData.data[0].uuid;
+        }
+      }
+    } catch {}
+
+    const cleanGov = (order.governorateName || '').trim();
+    const shipperDivision1 = GOV_MAP[cleanGov] || cleanGov || 'Tunis';
+
+    const cleanPhone = (order.phoneNumber || '').replace(/[^0-9]/g, '');
+    const cleanPhone2 = order.secondPhoneNumber ? (order.secondPhoneNumber || '').replace(/[^0-9]/g, '') : null;
+
+    const payload = {
+      address: {
+        name: order.fullName,
+        division_1: shipperDivision1,
+        division_2: order.delegation || null,
+        phone1: cleanPhone,
+        phone2: cleanPhone2 || null,
+        address1: order.address,
+        address2: null,
+        country: 'TN'
+      },
+      items: [
+        {
+          quantity: order.quantity || 1,
+          total_price: (order.bookPrice || 41) * (order.quantity || 1),
+          ...(productUuid ? { id: productUuid } : {})
+        }
+      ],
+      shipping_total: order.shippingCost ?? 8,
+      is_cod: true,
+      auto_fulfill: false,
+      with_confirmation: true,
+      store_name: 'كتاب ملخصات التاريخ والجغرافيا',
+      external_order_id: order.orderId,
+      external_order_url: `${req.protocol}://${req.get('host')}/admin`
+    };
+
+    const shipperRes = await fetch(`${SHIPPER_BASE_URL}/orders`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SHIPPER_API_KEY}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const shipperData = await shipperRes.json();
+
+    if (shipperRes.ok && (shipperData.id || shipperData.order?.id)) {
+      const shipperId = shipperData.id || shipperData.order?.id;
+      
+      // Update local storage order file with shipperOrderId and status
+      const orders = readOrdersFromFile();
+      const updated = orders.map(o => {
+        if (o.orderId === order.orderId) {
+          return {
+            ...o,
+            shipperStatus: 'synced',
+            shipperOrderId: shipperId,
+            shipperSyncedAt: Date.now()
+          };
+        }
+        return o;
+      });
+      writeOrdersToFile(updated);
+
+      return res.status(200).json({
+        success: true,
+        shipperOrderId: shipperId,
+        message: 'تم إرسال الطلبية إلى منصة Shipper بنجاح'
+      });
+    } else {
+      // Record failure state
+      const errMsg = shipperData.message || (shipperData.errors ? JSON.stringify(shipperData.errors) : `HTTP ${shipperRes.status}`);
+      const orders = readOrdersFromFile();
+      const updated = orders.map(o => {
+        if (o.orderId === order.orderId) {
+          return {
+            ...o,
+            shipperStatus: 'failed',
+            shipperError: errMsg
+          };
+        }
+        return o;
+      });
+      writeOrdersToFile(updated);
+
+      return res.status(shipperRes.status).json({
+        success: false,
+        error: errMsg,
+        details: shipperData
+      });
+    }
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
 });
 
 // Serve static files from the built frontend dist folder

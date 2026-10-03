@@ -14,6 +14,11 @@ export interface Order {
   status: 'new' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled';
   notes?: string;
   createdAt: number;
+  // Shipper Network integration fields
+  shipperStatus?: 'synced' | 'pending' | 'failed' | 'not_synced';
+  shipperOrderId?: number | string;
+  shipperSyncedAt?: number;
+  shipperError?: string;
 }
 
 const STORAGE_KEY = 'bac_book_orders';
@@ -142,9 +147,75 @@ export async function saveOrder(order: Omit<Order, 'createdAt' | 'status'>): Pro
     } catch (err) {
       console.warn('API sync warning: saved locally in browser storage', err);
     }
+
+    // 4. Auto-sync to Shipper Network API in background
+    try {
+      fetch('/api/shipper/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fullOrder)
+      }).then(async res => {
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.success && resData.shipperOrderId) {
+            updateOrderShipperStatus(fullOrder.orderId, {
+              shipperStatus: 'synced',
+              shipperOrderId: resData.shipperOrderId,
+              shipperSyncedAt: Date.now()
+            });
+          }
+        }
+      }).catch(() => {});
+    } catch {
+      // Background sync silent catch
+    }
   }
 
   return fullOrder;
+}
+
+/**
+ * Update Shipper specific status on an order
+ */
+export async function updateOrderShipperStatus(
+  orderId: string,
+  shipperInfo: {
+    shipperStatus: 'synced' | 'pending' | 'failed' | 'not_synced';
+    shipperOrderId?: number | string;
+    shipperError?: string;
+    shipperSyncedAt?: number;
+  }
+): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  const current = getStoredOrders();
+  const updated = current.map(item => {
+    if (item.orderId === orderId) {
+      return {
+        ...item,
+        ...shipperInfo
+      };
+    }
+    return item;
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+  window.dispatchEvent(new CustomEvent('bac_orders_changed'));
+  window.dispatchEvent(new Event('storage'));
+
+  try {
+    const channel = new BroadcastChannel('bac_orders_sync_channel');
+    channel.postMessage({ type: 'SHIPPER_STATUS_UPDATED', orderId, shipperInfo });
+    channel.close();
+  } catch {}
+
+  try {
+    await fetch(`/api/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(shipperInfo)
+    });
+  } catch {}
 }
 
 /**

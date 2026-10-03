@@ -6,9 +6,11 @@ import {
   exportOrdersToCSV, 
   syncOrdersFromAPI,
   clearAllOrders,
+  updateOrderShipperStatus,
   Order 
 } from '../../data/orderStorage';
 import { BOOK_DETAILS, TUNISIAN_GOVERNORATES } from '../../data/tunisiaData';
+import { checkShipperStatus, syncOrderToShipper, ShipperStatusResponse } from '../../data/shipperService';
 import { 
   ShoppingBag, 
   Phone, 
@@ -32,7 +34,9 @@ import {
   Printer,
   ChevronDown,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  ExternalLink,
+  PackageCheck
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -46,6 +50,9 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
   const [passwordError, setPasswordError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
+
+  // Shipper integration state
+  const [shipperStatus, setShipperStatus] = useState<ShipperStatusResponse | null>(null);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +79,14 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
       setOrders(synced);
     } catch (err) {
       console.error('Failed to sync orders:', err);
+    }
+
+    // Check Shipper connection
+    try {
+      const sStatus = await checkShipperStatus();
+      setShipperStatus(sStatus);
+    } catch {
+      // Ignore background shipper error
     } finally {
       if (showLoading) {
         setTimeout(() => setIsRefreshing(false), 400);
@@ -415,6 +430,43 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
           </div>
         </div>
 
+        {/* Shipper Network Integration Card */}
+        <div className="bg-[#241A14] text-[#EFE8DA] rounded-lg p-4 sm:p-5 border border-[#3E2E23] flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded bg-[#7C2529]/40 border border-[#7C2529] flex items-center justify-center text-[#F2C054] shrink-0">
+              <Truck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold text-sm sm:text-base">الربط التلقائي مع منصة Shipper Market</span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] bg-[#166534]/60 text-[#4ADE80] border border-[#166534] px-2.5 py-0.5 rounded font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80] animate-pulse"></span>
+                  API مفعل وتلقائي
+                </span>
+                {shipperStatus?.totalOrders !== undefined && (
+                  <span className="text-[11px] text-[#D8CFBF] bg-[#3A2D23] px-2 py-0.5 rounded">
+                    {shipperStatus.totalOrders} طلبية في حساب Shipper
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-[#B5A593] mt-1 leading-relaxed">
+                يتم إرسال كافة الطلبيات آلياً وتلقائياً عبر مفتاح الـ API إلى حسابك على منصة Shipper دون الحاجة لأي مزامنة يدوية. يمكنك فتح لوحة التحكم لمتابعة الشحن والتسليم.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <a
+              href="https://app.shipper.market/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-[#C09540] hover:bg-[#A98132] text-[#1F150E] text-xs font-bold px-3.5 py-2 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>عرض الطلبيات في Shipper Market</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
+
         {/* Filters and Search Bar */}
         <div className="bg-[#FCFAF6] border border-[#DACFBD] rounded p-4 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
           
@@ -590,6 +642,21 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
                           <span>الكمية: <strong className="font-mono text-sm">{order.quantity}</strong> نسخة</span>
                           <span aria-hidden="true">·</span>
                           <span>المبلغ الجملي: <strong className="font-mono text-sm text-[#7C2529]">{order.totalAmount} {BOOK_DETAILS.currency}</strong> (مع التوصيل)</span>
+                        </div>
+
+                        {/* Shipper Delivery Status */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                          {order.shipperStatus === 'synced' ? (
+                            <div className="inline-flex items-center gap-1.5 bg-[#DCFCE7] text-[#166534] border border-[#86EFAC] px-2.5 py-0.5 rounded text-[11px] font-medium">
+                              <CheckCircle className="w-3 h-3 text-[#166534]" />
+                              <span>مسجل في Shipper {order.shipperOrderId ? `(رقم الطرد #${order.shipperOrderId})` : ''}</span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1.5 bg-[#F5EEDF] text-[#705F51] border border-[#E3D4BF] px-2.5 py-0.5 rounded text-[11px] font-medium">
+                              <Truck className="w-3 h-3 text-[#7C2529]" />
+                              <span>ربط API تلقائي (Shipper Market)</span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Internal Note */}
