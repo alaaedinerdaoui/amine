@@ -29,8 +29,8 @@ function ordersApiPlugin(): Plugin {
   };
 
   const SHIPPER_API_KEY = process.env.SHIPPER_API_KEY || '558795|zBHJkI2s2t1H8mtM7hK2heBtn35LQB3Yrs0LnyFF';
-  const SHIPPER_BASE_URL = process.env.SHIPPER_API_URL || 'https://app.shipper.market/api/v1';
-  const SHIPPER_DASHBOARD_URL = process.env.SHIPPER_DASHBOARD_URL || 'https://app.shipper.market/';
+  const SHIPPER_BASE_URL = 'https://server.shipper.network/api/v1';
+  const SHIPPER_DASHBOARD_URL = 'https://app.shipper.market/';
 
   const GOV_MAP: Record<string, string> = {
     'تونس': 'Tunis', 'أريانة': 'Ariana', 'بن عروس': 'Ben Arous', 'منوبة': 'La Manouba',
@@ -58,10 +58,27 @@ function ordersApiPlugin(): Plugin {
               return;
             }
             const data = await apiRes.json();
+
+            let productsList = [];
+            try {
+              const pRes = await fetch(`${SHIPPER_BASE_URL}/products?per_page=50`, {
+                headers: { 'Authorization': `Bearer ${SHIPPER_API_KEY}`, 'Accept': 'application/json' }
+              });
+              if (pRes.ok) {
+                const pData = await pRes.json();
+                productsList = Array.isArray(pData.data) ? pData.data : [];
+              }
+            } catch {}
+
             res.end(JSON.stringify({
               connected: true,
               totalOrders: data.pagination?.total ?? (Array.isArray(data.data) ? data.data.length : 0),
-              message: 'متصل بنجاح مع منصة Shipper Network'
+              productsCount: productsList.length,
+              products: productsList,
+              isReadyToSync: productsList.length > 0,
+              message: productsList.length > 0
+                ? 'متصل بنجاح مع منصة Shipper وجاهز لنقل الطلبيات'
+                : 'حسابك في Shipper لا يحتوي على منتجات حالياً. أضف المنتج في app.shipper.market/products'
             }));
           } catch (e: any) {
             res.statusCode = 500;

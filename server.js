@@ -14,6 +14,7 @@ app.use(express.json());
 // Persistent orders file storage
 const DATA_DIR = path.join(__dirname, 'data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 function ensureDataFile() {
   try {
@@ -23,11 +24,40 @@ function ensureDataFile() {
     if (!fs.existsSync(ORDERS_FILE)) {
       fs.writeFileSync(ORDERS_FILE, JSON.stringify([], null, 2), 'utf8');
     }
+    if (!fs.existsSync(SETTINGS_FILE)) {
+      fs.writeFileSync(SETTINGS_FILE, JSON.stringify({}, null, 2), 'utf8');
+    }
   } catch (err) {
-    console.error('Failed to initialize orders file:', err);
+    console.error('Failed to initialize data files:', err);
   }
 }
 ensureDataFile();
+
+function getShipperProductUuid() {
+  try {
+    ensureDataFile();
+    if (fs.existsSync(SETTINGS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+      if (data && data.shipperProductUuid) return data.shipperProductUuid;
+    }
+  } catch {}
+  return process.env.SHIPPER_PRODUCT_UUID || null;
+}
+
+function setShipperProductUuid(uuid) {
+  try {
+    ensureDataFile();
+    let data = {};
+    if (fs.existsSync(SETTINGS_FILE)) {
+      try { data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch {}
+    }
+    data.shipperProductUuid = uuid;
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function readOrdersFromFile() {
   try {
@@ -119,7 +149,7 @@ app.delete('/api/orders', (req, res) => {
 
 // Shipper Network API Configuration
 const SHIPPER_API_KEY = process.env.SHIPPER_API_KEY || '558795|zBHJkI2s2t1H8mtM7hK2heBtn35LQB3Yrs0LnyFF';
-const SHIPPER_BASE_URL = process.env.SHIPPER_API_URL || 'https://app.shipper.market/api/v1';
+const SHIPPER_BASE_URL = process.env.SHIPPER_API_URL || 'https://server.shipper.network/api/v1';
 const SHIPPER_DASHBOARD_URL = process.env.SHIPPER_DASHBOARD_URL || 'https://app.shipper.market/';
 
 const GOV_MAP = {
@@ -158,22 +188,42 @@ async function autoDispatchToShipper(order) {
   }
 
   try {
-    // 1. Check if user has an existing product UUID on Shipper
-    let productUuid = null;
-    try {
-      const prodRes = await fetch(`${SHIPPER_BASE_URL}/products?per_page=1`, {
-        headers: {
-          'Authorization': `Bearer ${SHIPPER_API_KEY}`,
-          'Accept': 'application/json'
+    // 1. Get or detect Product UUID
+    let productUuid = getShipperProductUuid();
+    if (!productUuid) {
+      try {
+        const prodRes = await fetch(`${SHIPPER_BASE_URL}/products?per_page=10`, {
+          headers: {
+            'Authorization': `Bearer ${SHIPPER_API_KEY}`,
+            'Accept': 'application/json'
+          }
+        });
+        if (prodRes.ok) {
+          const prodData = await prodRes.json();
+          if (Array.isArray(prodData.data) && prodData.data.length > 0) {
+            productUuid = prodData.data[0].id || prodData.data[0].uuid;
+            setShipperProductUuid(productUuid);
+          }
         }
-      });
-      if (prodRes.ok) {
-        const prodData = await prodRes.json();
-        if (Array.isArray(prodData.data) && prodData.data.length > 0) {
-          productUuid = prodData.data[0].id || prodData.data[0].uuid;
-        }
-      }
-    } catch {}
+      } catch {}
+    }
+
+    if (!productUuid) {
+      // Shipper API strictly requires an existing product UUID, otherwise it returns HTTP 500
+      const orders = readOrdersFromFile();
+      const updated = orders.map(o => o.orderId === order.orderId ? {
+        ...o,
+        shipperStatus: 'pending_product',
+        shipperError: 'En attente d\'un produit dans votre compte Shipper (https://app.shipper.market/products)'
+      } : o);
+      writeOrdersToFile(updated);
+
+      return {
+        success: false,
+        pendingProduct: true,
+        error: 'Veuillez créer le produit dans https://app.shipper.market/products pour permettre à Shipper d\'enregistrer vos commandes.'
+      };
+    }
 
     const cleanGov = (order.governorateName || '').trim();
     const shipperDivision1 = GOV_MAP[cleanGov] || cleanGov || 'Tunis';
@@ -194,9 +244,9 @@ async function autoDispatchToShipper(order) {
       },
       items: [
         {
+          id: productUuid,
           quantity: order.quantity || 1,
-          total_price: (order.bookPrice || 41) * (order.quantity || 1),
-          ...(productUuid ? { id: productUuid } : {})
+          total_price: (order.bookPrice || 41) * (order.quantity || 1)
         }
       ],
       shipping_total: order.shippingCost ?? 8,
@@ -273,10 +323,23 @@ async function autoDispatchToShipper(order) {
 // Sync an order endpoint (can be called automatically or by system)
 app.post('/api/shipper/sync', async (req, res) => {
   const result = await autoDispatchToShipper(req.body);
-  if (result.success) {
-    return res.status(200).json(result);
-  }
   return res.status(200).json(result);
+});
+
+// Configure Shipper Product UUID
+app.post('/api/shipper/product-uuid', (req, res) => {
+  const { uuid } = req.body;
+  if (!uuid) return res.status(400).json({ error: 'UUID is required' });
+  setShipperProductUuid(uuid.trim());
+
+  // Automatically trigger dispatch on all pending orders
+  const allOrders = readOrdersFromFile();
+  const pendingOrders = allOrders.filter(o => o.shipperStatus !== 'synced');
+  for (const pOrder of pendingOrders) {
+    autoDispatchToShipper(pOrder).catch(() => {});
+  }
+
+  res.json({ success: true, productUuid: uuid.trim() });
 });
 
 // Check Shipper connection & statistics
@@ -299,10 +362,11 @@ app.get('/api/shipper/status', async (req, res) => {
 
     const ordersData = await ordersRes.json();
     
-    // Also check products
-    let productsCount = 0;
+    // Check products in account
+    let productsList = [];
+    let configuredUuid = getShipperProductUuid();
     try {
-      const prodRes = await fetch(`${SHIPPER_BASE_URL}/products?per_page=1`, {
+      const prodRes = await fetch(`${SHIPPER_BASE_URL}/products?per_page=50`, {
         headers: {
           'Authorization': `Bearer ${SHIPPER_API_KEY}`,
           'Accept': 'application/json'
@@ -310,15 +374,33 @@ app.get('/api/shipper/status', async (req, res) => {
       });
       if (prodRes.ok) {
         const prodData = await prodRes.json();
-        productsCount = prodData.pagination?.total || (Array.isArray(prodData.data) ? prodData.data.length : 0);
+        productsList = Array.isArray(prodData.data) ? prodData.data : [];
+        if (!configuredUuid && productsList.length > 0) {
+          configuredUuid = productsList[0].id || productsList[0].uuid;
+          setShipperProductUuid(configuredUuid);
+        }
       }
     } catch {}
+
+    // If we have a product UUID now, auto-dispatch any pending orders in background!
+    if (configuredUuid) {
+      const allOrders = readOrdersFromFile();
+      const pendingOrders = allOrders.filter(o => o.shipperStatus !== 'synced');
+      for (const pOrder of pendingOrders) {
+        autoDispatchToShipper(pOrder).catch(() => {});
+      }
+    }
 
     res.json({
       connected: true,
       totalOrders: ordersData.pagination?.total ?? (Array.isArray(ordersData.data) ? ordersData.data.length : 0),
-      productsCount,
-      message: 'تم الاتصال بنجاح مع منصة Shipper Network'
+      productsCount: productsList.length,
+      products: productsList,
+      configuredProductUuid: configuredUuid,
+      isReadyToSync: !!configuredUuid,
+      message: productsList.length > 0
+        ? 'متصل بنجاح مع منصة Shipper وجاهز لنقل الطلبيات'
+        : 'حسابك في Shipper لا يحتوي على منتجات حالياً. أضف المنتج في app.shipper.market/products'
     });
   } catch (err) {
     res.status(500).json({

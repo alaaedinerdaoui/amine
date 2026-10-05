@@ -448,6 +448,13 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
                     {shipperStatus.totalOrders} طلبية في حساب Shipper
                   </span>
                 )}
+                {shipperStatus?.productsCount !== undefined && (
+                  <span className={`text-[11px] px-2 py-0.5 rounded font-bold ${
+                    shipperStatus.productsCount > 0 ? 'bg-[#166534]/40 text-[#4ADE80]' : 'bg-[#DC2626]/40 text-[#FCA5A5]'
+                  }`}>
+                    {shipperStatus.productsCount > 0 ? `${shipperStatus.productsCount} منتج متصل` : 'لا يوجد منتجات في Shipper'}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-[#B5A593] mt-1 leading-relaxed">
                 يتم إرسال كافة الطلبيات آلياً وتلقائياً عبر مفتاح الـ API إلى حسابك على منصة Shipper دون الحاجة لأي مزامنة يدوية. يمكنك فتح لوحة التحكم لمتابعة الشحن والتسليم.
@@ -466,6 +473,70 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
             </a>
           </div>
         </div>
+
+        {/* Shipper Setup Alert if 0 products found */}
+        {shipperStatus && shipperStatus.productsCount === 0 && (
+          <div className="bg-[#FFFBEB] border-2 border-[#F59E0B] rounded-lg p-5 text-[#92400E] shadow-sm space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#FEF3C7] border border-[#F59E0B] flex items-center justify-center shrink-0 text-[#D97706] font-bold text-lg">
+                ⚠️
+              </div>
+              <div className="space-y-2 flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-bold text-sm sm:text-base text-[#78350F]">
+                    خطوة هامة: أضف كتاب الملخصات في حساب Shipper لتظهر الطلبيات مباشرة هناك
+                  </h3>
+                  <span className="text-[11px] bg-[#FDE68A] text-[#92400E] px-2 py-0.5 rounded font-mono font-bold">
+                    Action requise dans Shipper
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-[#78350F] leading-relaxed">
+                  مفتاح الـ API متصل بنجاح، ولكن نظام <strong>Shipper Market</strong> يشترط وجود المنتج مسجلاً في متجرك (0 منتجات حالياً) ليتمكن من ربط الطلبيات به وإنشاء الكولي.
+                </p>
+                <div className="bg-white/90 border border-[#FDE68A] rounded p-3 text-xs text-[#78350F] space-y-1.5">
+                  <p className="font-bold text-sm">الحل السريع (تستغرق 30 ثانية فقط):</p>
+                  <ol className="list-decimal list-inside space-y-1 mr-1">
+                    <li>
+                      افتح حسابك في Shipper من الرابط:{' '}
+                      <a
+                        href="https://app.shipper.market/products"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[#1D4ED8] underline font-bold"
+                      >
+                        https://app.shipper.market/products
+                      </a>
+                    </li>
+                    <li>اضغط على زر <strong>"Ajouter un produit" (إضافة منتج)</strong></li>
+                    <li>اكتب اسم المنتج: <strong>كتاب ملخصات التاريخ والجغرافيا</strong> والسعر: <strong>41</strong></li>
+                    <li>اضغط <strong>Sauvegarder (حفظ)</strong></li>
+                  </ol>
+                  <p className="text-[11px] text-[#047857] font-semibold pt-1">
+                    ✓ بمجرد حفظ المنتج، سيتعرف موقعنا عليه تلقائياً ويرسل كافة الطلبيات السابقة والجديدة مباشرة إلى منصة Shipper!
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <a
+                    href="https://app.shipper.market/products"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-[#D97706] hover:bg-[#B45309] text-white text-xs font-bold px-4 py-2 rounded flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                  >
+                    <span>فتح صفحة المنتجات في Shipper الآن</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                  <button
+                    onClick={() => loadOrders(true)}
+                    className="border border-[#D97706] bg-white hover:bg-[#FEF3C7] text-[#92400E] text-xs font-bold px-3.5 py-2 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <span>التحقق من إضافة المنتج</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Filters and Search Bar */}
         <div className="bg-[#FCFAF6] border border-[#DACFBD] rounded p-4 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
