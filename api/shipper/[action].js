@@ -114,8 +114,11 @@ export default async function handler(req, res) {
         return res.status(r.status).json({ connected: false, status: r.status, error: data.message });
       }
       const products = Array.isArray(data.data) ? data.data : [];
+      const ordersRes = await shipper('/orders?per_page=1');
+      const ordersData = ordersRes.ok ? await ordersRes.json().catch(() => ({})) : {};
       return res.status(200).json({
         connected: true,
+        totalOrders: ordersData.pagination?.total,
         productsCount: products.length,
         products: products.map((p) => ({
           uuid: p.uuid,
