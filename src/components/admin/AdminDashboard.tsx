@@ -170,16 +170,27 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
     await loadOrders();
   };
 
-  // Filtered orders list
+  // Filtered orders list (defensive against any undefined/null fields)
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.phoneNumber.includes(searchQuery) ||
-      order.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.delegation.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!order) return false;
+    const query = (searchQuery || '').trim().toLowerCase();
+    const fullName = (order.fullName || '').toLowerCase();
+    const phone = (order.phoneNumber || '').toString();
+    const phone2 = (order.secondPhoneNumber || '').toString();
+    const id = (order.orderId || '').toLowerCase();
+    const delegation = (order.delegation || '').toLowerCase();
+    const address = (order.address || '').toLowerCase();
+
+    const matchesSearch = !query || 
+      fullName.includes(query) ||
+      phone.includes(query) ||
+      phone2.includes(query) ||
+      id.includes(query) ||
+      delegation.includes(query) ||
+      address.includes(query);
 
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesGov = govFilter === 'all' || order.governorateName === govFilter;
+    const matchesGov = govFilter === 'all' || (order.governorateName || '').trim() === govFilter;
 
     return matchesSearch && matchesStatus && matchesGov;
   });
@@ -620,13 +631,23 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
                   تم إفراغ الطلبيات الافتراضية بنجاح. أي طلبية جديدة يسجلها التلميذ أو الزائر في الموقع ستظهر هنا فوراً وتلقائياً دون الحاجة لتحديث الصفحة.
                 </p>
               </div>
-              <button
-                onClick={onBackToSite}
-                className="vintage-button px-5 py-2.5 text-xs rounded font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow"
-              >
-                <span>العودة للموقع وتجربة تسجيل طلب</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => loadOrders(true)}
+                  disabled={isRefreshing}
+                  className="bg-[#7C2529] hover:bg-[#631D21] text-white px-4 py-2 text-xs rounded font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <span>تحديث وجلب الطلبيات من السيرفر</span>
+                </button>
+                <button
+                  onClick={onBackToSite}
+                  className="vintage-button px-4 py-2 text-xs rounded font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow"
+                >
+                  <span>العودة للموقع وتجربة تسجيل طلب</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="p-12 text-center text-[#705F51] space-y-3">

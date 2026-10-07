@@ -15,7 +15,7 @@ export interface Order {
   notes?: string;
   createdAt: number;
   // Shipper Network integration fields
-  shipperStatus?: 'synced' | 'pending' | 'failed' | 'not_synced';
+  shipperStatus?: 'synced' | 'pending' | 'failed' | 'not_synced' | 'pending_product';
   shipperOrderId?: number | string;
   shipperSyncedAt?: number;
   shipperError?: string;
@@ -23,44 +23,38 @@ export interface Order {
 
 const STORAGE_KEY = 'bac_book_orders';
 
-// Legacy sample IDs that must be completely purged from browser caches
-const LEGACY_SAMPLE_IDS = new Set(['BAC-741290', 'BAC-892144', 'BAC-632018']);
-const LEGACY_SAMPLE_NAMES = new Set(['ياسين الماجري', 'مريم بن سالم', 'أحمد التونسي']);
+// In-memory fallback cache for environments where localStorage is blocked (iframes, Safari ITP, etc.)
+let memoryOrdersCache: Order[] = [];
 
-/**
- * Filter out any mock/legacy sample orders from existing browser cache
- */
+// Specific mock IDs from initial prototyping to exclude if still present in old caches
+const LEGACY_SAMPLE_IDS = new Set(['BAC-741290', 'BAC-892144', 'BAC-632018']);
+
 function cleanSampleOrders(orders: Order[]): Order[] {
-  return orders.filter(o => 
-    !LEGACY_SAMPLE_IDS.has(o.orderId) && 
-    !LEGACY_SAMPLE_NAMES.has(o.fullName)
-  );
+  if (!Array.isArray(orders)) return [];
+  return orders.filter(o => o && o.orderId && !LEGACY_SAMPLE_IDS.has(o.orderId));
 }
 
 /**
- * Retrieve current orders from localStorage (purging any legacy mock users)
+ * Retrieve current orders from localStorage with in-memory fallback
  */
 export function getStoredOrders(): Order[] {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined') return memoryOrdersCache;
+  
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-      return [];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const cleaned = cleanSampleOrders(parsed);
+        memoryOrdersCache = cleaned;
+        return cleaned;
+      }
     }
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    
-    // Purge any legacy sample data
-    const cleaned = cleanSampleOrders(parsed);
-    if (cleaned.length !== parsed.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
-    }
-    return cleaned;
   } catch (err) {
-    console.error('Error reading orders from localStorage', err);
-    return [];
+    console.warn('LocalStorage not accessible in this context, using in-memory cache:', err);
   }
+
+  return memoryOrdersCache;
 }
 
 /**
@@ -69,10 +63,12 @@ export function getStoredOrders(): Order[] {
 export async function syncOrdersFromAPI(): Promise<Order[]> {
   const localOrders = getStoredOrders();
   
-  if (typeof window === 'undefined') return localOrders;
-
   try {
-    const res = await fetch('/api/orders', { cache: 'no-store' });
+    const res = await fetch('/api/orders', { 
+      cache: 'no-store',
+      headers: { 'Accept': 'application/json' }
+    });
+    
     if (res.ok) {
       const serverOrders: Order[] = await res.json();
       if (Array.isArray(serverOrders)) {
@@ -80,11 +76,17 @@ export async function syncOrdersFromAPI(): Promise<Order[]> {
         
         // Merge server and local orders (deduplicated by orderId)
         const ordersMap = new Map<string, Order>();
-        cleanedServer.forEach(o => ordersMap.set(o.orderId, o));
+        
+        // Server orders are the primary source of truth
+        cleanedServer.forEach(o => {
+          if (o && o.orderId) {
+            ordersMap.set(o.orderId, o);
+          }
+        });
 
-        // If local has orders not yet on server, preserve them and push to server
-        localOrders.forEach(o => {
-          if (!ordersMap.has(o.orderId)) {
+        // If local/memory has orders not yet on server, preserve them and push to server
+        [...localOrders, ...memoryOrdersCache].forEach(o => {
+          if (o && o.orderId && !ordersMap.has(o.orderId)) {
             ordersMap.set(o.orderId, o);
             fetch('/api/orders', {
               method: 'POST',
@@ -98,15 +100,26 @@ export async function syncOrdersFromAPI(): Promise<Order[]> {
           (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
         );
 
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        // Update in-memory cache
+        memoryOrdersCache = merged;
+
+        // Try persisting to localStorage safely (will not throw or break return)
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          } catch (e) {
+            console.warn('LocalStorage save failed (iframe or quota):', e);
+          }
+        }
+
         return merged;
       }
     }
-  } catch {
-    // API unavailable or offline; return local orders
+  } catch (err) {
+    console.warn('Backend /api/orders sync warning, falling back to local cache:', err);
   }
 
-  return localOrders;
+  return localOrders.length > 0 ? localOrders : memoryOrdersCache;
 }
 
 /**
@@ -119,36 +132,46 @@ export async function saveOrder(order: Omit<Order, 'createdAt' | 'status'>): Pro
     createdAt: Date.now()
   };
 
-  if (typeof window !== 'undefined') {
-    // 1. Save immediately to localStorage
-    const current = getStoredOrders();
-    const updated = [fullOrder, ...current.filter(o => o.orderId !== fullOrder.orderId)];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  // 1. Immediately update memory cache
+  memoryOrdersCache = [fullOrder, ...memoryOrdersCache.filter(o => o.orderId !== fullOrder.orderId)];
 
-    // 2. Dispatch cross-component and cross-tab update events
-    window.dispatchEvent(new CustomEvent('bac_order_added', { detail: fullOrder }));
-    window.dispatchEvent(new Event('storage'));
+  if (typeof window !== 'undefined') {
+    // 2. Save to localStorage safely
+    try {
+      const current = getStoredOrders();
+      const updated = [fullOrder, ...current.filter(o => o.orderId !== fullOrder.orderId)];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('LocalStorage save failed:', e);
+    }
+
+    // 3. Dispatch cross-component and cross-tab update events
+    try {
+      window.dispatchEvent(new CustomEvent('bac_order_added', { detail: fullOrder }));
+      window.dispatchEvent(new Event('storage'));
+    } catch {}
 
     try {
       const channel = new BroadcastChannel('bac_orders_sync_channel');
       channel.postMessage({ type: 'ORDER_CREATED', order: fullOrder });
       channel.close();
-    } catch {
-      // BroadcastChannel optional
-    }
+    } catch {}
 
-    // 3. Post to API in background
+    // 4. Post to backend API
     try {
-      await fetch('/api/orders', {
+      const apiRes = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(fullOrder)
       });
+      if (!apiRes.ok) {
+        console.warn('Failed to save order to server API:', apiRes.status);
+      }
     } catch (err) {
-      console.warn('API sync warning: saved locally in browser storage', err);
+      console.warn('Network error saving order to /api/orders:', err);
     }
 
-    // 4. Auto-sync to Shipper Network API in background
+    // 5. Trigger auto-dispatch to Shipper Network API in background
     try {
       fetch('/api/shipper/sync', {
         method: 'POST',
@@ -166,9 +189,7 @@ export async function saveOrder(order: Omit<Order, 'createdAt' | 'status'>): Pro
           }
         }
       }).catch(() => {});
-    } catch {
-      // Background sync silent catch
-    }
+    } catch {}
   }
 
   return fullOrder;
@@ -180,52 +201,58 @@ export async function saveOrder(order: Omit<Order, 'createdAt' | 'status'>): Pro
 export async function updateOrderShipperStatus(
   orderId: string,
   shipperInfo: {
-    shipperStatus: 'synced' | 'pending' | 'failed' | 'not_synced';
+    shipperStatus: 'synced' | 'pending' | 'failed' | 'not_synced' | 'pending_product';
     shipperOrderId?: number | string;
     shipperError?: string;
     shipperSyncedAt?: number;
   }
 ): Promise<void> {
-  if (typeof window === 'undefined') return;
-
-  const current = getStoredOrders();
-  const updated = current.map(item => {
+  // Update memory cache
+  memoryOrdersCache = memoryOrdersCache.map(item => {
     if (item.orderId === orderId) {
-      return {
-        ...item,
-        ...shipperInfo
-      };
+      return { ...item, ...shipperInfo };
     }
     return item;
   });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
-  window.dispatchEvent(new CustomEvent('bac_orders_changed'));
-  window.dispatchEvent(new Event('storage'));
+  if (typeof window !== 'undefined') {
+    try {
+      const current = getStoredOrders();
+      const updated = current.map(item => {
+        if (item.orderId === orderId) {
+          return { ...item, ...shipperInfo };
+        }
+        return item;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
 
-  try {
-    const channel = new BroadcastChannel('bac_orders_sync_channel');
-    channel.postMessage({ type: 'SHIPPER_STATUS_UPDATED', orderId, shipperInfo });
-    channel.close();
-  } catch {}
+    try {
+      window.dispatchEvent(new CustomEvent('bac_orders_changed'));
+      window.dispatchEvent(new Event('storage'));
+    } catch {}
 
-  try {
-    await fetch(`/api/orders/${orderId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(shipperInfo)
-    });
-  } catch {}
+    try {
+      const channel = new BroadcastChannel('bac_orders_sync_channel');
+      channel.postMessage({ type: 'SHIPPER_STATUS_UPDATED', orderId, shipperInfo });
+      channel.close();
+    } catch {}
+
+    try {
+      await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(shipperInfo)
+      });
+    } catch {}
+  }
 }
 
 /**
  * Update order status and notes
  */
 export async function updateOrderStatus(orderId: string, status: Order['status'], notes?: string): Promise<void> {
-  if (typeof window === 'undefined') return;
-
-  const current = getStoredOrders();
-  const updated = current.map(item => {
+  memoryOrdersCache = memoryOrdersCache.map(item => {
     if (item.orderId === orderId) {
       return {
         ...item,
@@ -235,70 +262,100 @@ export async function updateOrderStatus(orderId: string, status: Order['status']
     }
     return item;
   });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
-  window.dispatchEvent(new CustomEvent('bac_orders_changed'));
-  window.dispatchEvent(new Event('storage'));
+  if (typeof window !== 'undefined') {
+    try {
+      const current = getStoredOrders();
+      const updated = current.map(item => {
+        if (item.orderId === orderId) {
+          return {
+            ...item,
+            status,
+            ...(notes !== undefined ? { notes } : {})
+          };
+        }
+        return item;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
 
-  try {
-    const channel = new BroadcastChannel('bac_orders_sync_channel');
-    channel.postMessage({ type: 'ORDER_UPDATED', orderId, status, notes });
-    channel.close();
-  } catch {}
+    try {
+      window.dispatchEvent(new CustomEvent('bac_orders_changed'));
+      window.dispatchEvent(new Event('storage'));
+    } catch {}
 
-  try {
-    await fetch(`/api/orders/${orderId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, notes })
-    });
-  } catch {}
+    try {
+      const channel = new BroadcastChannel('bac_orders_sync_channel');
+      channel.postMessage({ type: 'ORDER_UPDATED', orderId, status, notes });
+      channel.close();
+    } catch {}
+
+    try {
+      await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, notes })
+      });
+    } catch {}
+  }
 }
 
 /**
  * Delete an order
  */
 export async function deleteOrder(orderId: string): Promise<void> {
-  if (typeof window === 'undefined') return;
+  memoryOrdersCache = memoryOrdersCache.filter(item => item.orderId !== orderId);
 
-  const current = getStoredOrders();
-  const updated = current.filter(item => item.orderId !== orderId);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (typeof window !== 'undefined') {
+    try {
+      const current = getStoredOrders();
+      const updated = current.filter(item => item.orderId !== orderId);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
 
-  window.dispatchEvent(new CustomEvent('bac_orders_changed'));
-  window.dispatchEvent(new Event('storage'));
+    try {
+      window.dispatchEvent(new CustomEvent('bac_orders_changed'));
+      window.dispatchEvent(new Event('storage'));
+    } catch {}
 
-  try {
-    const channel = new BroadcastChannel('bac_orders_sync_channel');
-    channel.postMessage({ type: 'ORDER_DELETED', orderId });
-    channel.close();
-  } catch {}
+    try {
+      const channel = new BroadcastChannel('bac_orders_sync_channel');
+      channel.postMessage({ type: 'ORDER_DELETED', orderId });
+      channel.close();
+    } catch {}
 
-  try {
-    await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
-  } catch {}
+    try {
+      await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
+    } catch {}
+  }
 }
 
 /**
  * Clear all orders
  */
 export async function clearAllOrders(): Promise<void> {
-  if (typeof window === 'undefined') return;
+  memoryOrdersCache = [];
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+    } catch {}
 
-  window.dispatchEvent(new CustomEvent('bac_orders_changed'));
-  window.dispatchEvent(new Event('storage'));
+    try {
+      window.dispatchEvent(new CustomEvent('bac_orders_changed'));
+      window.dispatchEvent(new Event('storage'));
+    } catch {}
 
-  try {
-    const channel = new BroadcastChannel('bac_orders_sync_channel');
-    channel.postMessage({ type: 'ALL_CLEARED' });
-    channel.close();
-  } catch {}
+    try {
+      const channel = new BroadcastChannel('bac_orders_sync_channel');
+      channel.postMessage({ type: 'ALL_CLEARED' });
+      channel.close();
+    } catch {}
 
-  try {
-    await fetch('/api/orders', { method: 'DELETE' });
-  } catch {}
+    try {
+      await fetch('/api/orders', { method: 'DELETE' });
+    } catch {}
+  }
 }
 
 /**
@@ -319,15 +376,15 @@ export function exportOrdersToCSV(): void {
   };
 
   const rows = orders.map(o => [
-    o.orderId,
+    o.orderId || '',
     `"${(o.fullName || '').replace(/"/g, '""')}"`,
     `"${o.phoneNumber || ''}"`,
     `"${o.governorateName || ''}"`,
     `"${o.delegation || ''}"`,
     `"${(o.address || '').replace(/"/g, '""')}"`,
-    o.quantity,
-    o.totalAmount,
-    `"${statusMap[o.status] || o.status}"`,
+    o.quantity || 1,
+    o.totalAmount || 0,
+    `"${statusMap[o.status] || o.status || ''}"`,
     `"${o.date || ''}"`,
     `"${(o.notes || '').replace(/"/g, '""')}"`
   ]);
