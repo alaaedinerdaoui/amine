@@ -145,7 +145,7 @@ export function Hero({ onOrderClick, onExploreClick }: HeroProps) {
                       {BOOK_DETAILS.basePrice} {BOOK_DETAILS.currency}
                     </span>
                     <span className="text-[10px] text-[#1D7438] bg-[#EBF5EE] border border-[#CDE5D4] px-1.5 py-0.5 rounded font-medium">
-                      49 د.ت مع التوصيل
+                      48.9 د.ت مع التوصيل
                     </span>
                   </div>
                 </div>

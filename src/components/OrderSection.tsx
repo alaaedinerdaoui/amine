@@ -33,10 +33,10 @@ export function OrderSection() {
   const selectedGov = TUNISIAN_GOVERNORATES.find(g => g.id === governorate) || TUNISIAN_GOVERNORATES[0];
 
   const bookUnitPrice = BOOK_DETAILS.basePrice;
-  // 1 copy: 41 + 8 = 49 DT. 2 copies: 41*2 + 7 = 89 DT. 3+ copies: 41*quantity + 7 DT.
-  const shippingFee = quantity === 1 ? (BOOK_DETAILS.singleShippingCost ?? 8) : (BOOK_DETAILS.multiShippingCost ?? 7);
-  const itemsTotal = bookUnitPrice * quantity;
-  const orderTotal = itemsTotal + shippingFee;
+  // Delivery is 9 DT, Book is 39.9 DT -> 48.9 DT total for 1 copy
+  const shippingFee = BOOK_DETAILS.shippingCost ?? 9;
+  const itemsTotal = Number((bookUnitPrice * quantity).toFixed(1));
+  const orderTotal = Number((itemsTotal + shippingFee).toFixed(1));
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -267,7 +267,7 @@ export function OrderSection() {
                       <span className="text-xs text-[#6C5B4E]">سعر النسخة بمفردها</span>
                     </div>
                     <div className="text-[11px] text-[#1D7438] font-medium bg-[#EBF5EE] px-2 py-0.5 rounded border border-[#CDE5D4] inline-block w-fit">
-                      49 د.ت مع التوصيل (89 د.ت فقط عند طلب نسختين)
+                      48.9 د.ت مع التوصيل لكامل تراب الجمهورية
                     </div>
                   </div>
                 </div>
@@ -286,9 +286,6 @@ export function OrderSection() {
                 <div className="flex justify-between text-[#5C4A3C]">
                   <div className="flex items-center gap-1.5">
                     <span>مصاريف التوصيل:</span>
-                    {quantity >= 2 && (
-                      <span className="text-[10px] bg-[#EBF5EE] text-[#1D7438] px-1.5 py-0.5 rounded font-semibold border border-[#CDE5D4]">تخفيض في التوصيل</span>
-                    )}
                   </div>
                   <span className="font-mono tabular-nums font-bold text-[#2A1F18]">
                     {shippingFee} {BOOK_DETAILS.currency}

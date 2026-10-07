@@ -246,10 +246,10 @@ async function autoDispatchToShipper(order) {
         {
           id: productUuid,
           quantity: order.quantity || 1,
-          total_price: (order.bookPrice || 41) * (order.quantity || 1)
+          total_price: Number(((order.bookPrice || 39.9) * (order.quantity || 1)).toFixed(1))
         }
       ],
-      shipping_total: order.shippingCost ?? 8,
+      shipping_total: order.shippingCost ?? 9,
       is_cod: true,
       auto_fulfill: false,
       with_confirmation: true,

@@ -519,7 +519,7 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
                       </a>
                     </li>
                     <li>اضغط على زر <strong>"Ajouter un produit" (إضافة منتج)</strong></li>
-                    <li>اكتب اسم المنتج: <strong>كتاب ملخصات التاريخ والجغرافيا</strong> والسعر: <strong>41</strong></li>
+                    <li>اكتب اسم المنتج: <strong>كتاب ملخصات التاريخ والجغرافيا</strong> والسعر: <strong>39.9</strong></li>
                     <li>اضغط <strong>Sauvegarder (حفظ)</strong></li>
                   </ol>
                   <p className="text-[11px] text-[#047857] font-semibold pt-1">

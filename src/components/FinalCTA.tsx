@@ -45,7 +45,7 @@ export function FinalCTA({ onOrderClick }: FinalCTAProps) {
             <span aria-hidden="true">·</span>
             <span>توصيل لكامل تراب الجمهورية</span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono font-bold text-[#7C2529]">41 د.ت للكتاب (49 د.ت مع التوصيل · 89 د.ت لنسختين)</span>
+            <span className="font-mono font-bold text-[#7C2529]">39.9 د.ت للكتاب (48.9 د.ت مع التوصيل)</span>
           </div>
 
         </div>
