@@ -1,7 +1,7 @@
 // Serverless API route for Shipper on Vercel
 
 const SHIPPER_API_KEY = process.env.SHIPPER_API_KEY || '558795|zBHJkI2s2t1H8mtM7hK2heBtn35LQB3Yrs0LnyFF';
-const SHIPPER_BASE_URL = process.env.SHIPPER_API_URL || 'https://app.shipper.market/api/v1';
+const SHIPPER_BASE_URL = process.env.SHIPPER_API_URL || 'https://app.shipper.market/api';
 const SHIPPER_DASHBOARD_URL = process.env.SHIPPER_DASHBOARD_URL || 'https://app.shipper.market/';
 
 const GOV_MAP = {
