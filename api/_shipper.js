@@ -1,5 +1,7 @@
-// Vercel serverless route: /api/shipper/sync | /api/shipper/status | /api/shipper/orders
-// Replaces api/shipper.js (delete that file).
+// Shared Shipper proxy logic, used by api/shipper/sync.js, status.js and orders.js.
+// Files starting with "_" are not deployed as routes by Vercel. Plain file names
+// are used on purpose: a dynamic route like api/shipper/[action].js loses to the
+// catch-all rewrite in vercel.json and never runs.
 //
 // Optional Vercel env vars: SHIPPER_API_KEY, SHIPPER_PRODUCT_UUID.
 // Without SHIPPER_PRODUCT_UUID the first product in the Shipper account is used
@@ -75,8 +77,7 @@ async function getProductUuid() {
   return cachedProductUuid;
 }
 
-export default async function handler(req, res) {
-  const { action } = req.query;
+export async function handleShipper(action, req, res) {
 
   try {
     // Create the order on Shipper (called by the public checkout)
