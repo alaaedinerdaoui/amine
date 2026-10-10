@@ -1,13 +1,25 @@
 import { useState } from 'react';
-import { Phone, MessageCircle, Instagram, Facebook, ShieldCheck, FileText, X, Lock } from 'lucide-react';
+import { Phone, MessageCircle, Instagram, Facebook, ShieldCheck, FileText, X } from 'lucide-react';
 import { BOOK_DETAILS } from '../data/tunisiaData';
 
 interface FooterProps {
-  onAdminClick?: () => void;
+  onSecretTrigger?: () => void;
 }
 
-export function Footer({ onAdminClick }: FooterProps) {
+export function Footer({ onSecretTrigger }: FooterProps) {
   const [modalType, setModalType] = useState<'privacy' | 'terms' | null>(null);
+  const [clicks, setClicks] = useState(0);
+
+  const handleSecretClick = () => {
+    const next = clicks + 1;
+    if (next >= 3) {
+      setClicks(0);
+      onSecretTrigger?.();
+    } else {
+      setClicks(next);
+      setTimeout(() => setClicks(0), 1200);
+    }
+  };
 
   return (
     <footer className="bg-[#241A14] text-[#D8CFBF] pt-14 pb-10 border-t border-[#3A2D23]">
@@ -108,16 +120,6 @@ export function Footer({ onAdminClick }: FooterProps) {
               >
                 شروط الطلب والتوصيل
               </button>
-              {onAdminClick && (
-                <button
-                  onClick={onAdminClick}
-                  className="text-right text-[#A89886]/60 hover:text-[#C09540] transition-colors cursor-pointer flex items-center gap-1 pt-1"
-                  title="الولوج للوحة الإدارة"
-                >
-                  <Lock className="w-3 h-3" />
-                  <span>لوحة الإدارة (/admin)</span>
-                </button>
-              )}
             </div>
           </div>
 
@@ -125,7 +127,13 @@ export function Footer({ onAdminClick }: FooterProps) {
 
         {/* Bottom copyright line */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#7A6A5A]">
-          <p>© {new Date().getFullYear()} كتاب الملخصات في التاريخ والجغرافيا. جميع الحقوق محفوظة لتلامذة تونس.</p>
+          <p 
+            onClick={handleSecretClick} 
+            className="cursor-default select-none"
+            title=""
+          >
+            © {new Date().getFullYear()} كتاب الملخصات في التاريخ والجغرافيا. جميع الحقوق محفوظة لتلامذة تونس.
+          </p>
           <p className="font-serif-book text-[#A39281]">طبعة خاصة بباكالوريا اقتصاد وتصرف</p>
         </div>
 

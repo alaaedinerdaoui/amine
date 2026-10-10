@@ -17,45 +17,42 @@ import { Footer } from './components/Footer';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 
 export default function App() {
-  const [currentPath, setCurrentPath] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const p = window.location.pathname;
-      const h = window.location.hash;
-      if (p === '/admin' || p.startsWith('/admin/') || h === '#admin' || h === '#/admin') {
-        return '/admin';
-      }
-    }
-    return '/';
-  });
+  const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    const handleLocationChange = () => {
+    // If someone accesses /admin or /#admin, immediately clean URL and redirect to /
+    const cleanUrl = () => {
       const p = window.location.pathname;
       const h = window.location.hash;
-      if (p === '/admin' || p.startsWith('/admin/') || h === '#admin' || h === '#/admin') {
-        setCurrentPath('/admin');
-      } else {
-        setCurrentPath('/');
+      if (p === '/admin' || p.startsWith('/admin/') || h === '#admin' || h === '#/admin' || h.startsWith('#admin')) {
+        window.history.replaceState(null, '', '/');
       }
     };
 
-    window.addEventListener('popstate', handleLocationChange);
-    window.addEventListener('hashchange', handleLocationChange);
+    cleanUrl();
+
+    // Keyboard shortcut to toggle admin: Ctrl + Shift + A (or Cmd + Shift + A on Mac)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        setIsAdminOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('popstate', cleanUrl);
+    window.addEventListener('hashchange', cleanUrl);
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
-      window.removeEventListener('popstate', handleLocationChange);
-      window.removeEventListener('hashchange', handleLocationChange);
+      window.removeEventListener('popstate', cleanUrl);
+      window.removeEventListener('hashchange', cleanUrl);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
-  const navigateTo = (path: string) => {
-    window.history.pushState({}, '', path);
-    setCurrentPath(path);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // If on /admin route, display the Hidden Admin Dashboard
-  if (currentPath === '/admin') {
-    return <AdminDashboard onBackToSite={() => navigateTo('/')} />;
+  // Display the Hidden Admin Dashboard if opened via shortcut or secret trigger
+  if (isAdminOpen) {
+    return <AdminDashboard onBackToSite={() => setIsAdminOpen(false)} />;
   }
 
   const scrollToOrder = () => {
@@ -107,7 +104,7 @@ export default function App() {
       </main>
 
       {/* 9. Footer */}
-      <Footer onAdminClick={() => navigateTo('/admin')} />
+      <Footer onSecretTrigger={() => setIsAdminOpen(true)} />
     </div>
   );
 }

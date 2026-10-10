@@ -135,8 +135,8 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Default PIN: 2026 or admin
-    if (passwordInput.trim() === '2026' || passwordInput.trim().toLowerCase() === 'admin') {
+    const cleanPassword = passwordInput.trim();
+    if (cleanPassword === 'moulakhes@amine@2026') {
       setIsAuthenticated(true);
       sessionStorage.setItem('bac_admin_auth', 'true');
       setPasswordError(false);
@@ -272,13 +272,13 @@ export function AdminDashboard({ onBackToSite }: AdminDashboardProps) {
                 type="password"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
-                placeholder="أدخل الرمز السري (الرمز الافتراضي: 2026)"
-                className="w-full text-center tracking-widest text-lg font-mono bg-[#FAF7F0] border border-[#D5C6AF] rounded px-4 py-3 focus:outline-none focus:border-[#7C2529] focus:ring-1 focus:ring-[#7C2529]"
+                placeholder="أدخل كلمة المرور السرية للإدارة"
+                className="w-full text-center text-base font-mono bg-[#FAF7F0] border border-[#D5C6AF] rounded px-4 py-3 focus:outline-none focus:border-[#7C2529] focus:ring-1 focus:ring-[#7C2529]"
                 autoFocus
               />
               {passwordError && (
                 <p className="text-xs text-[#B73225] mt-2">
-                  الرمز السري غير صحيح. جرب: <span className="font-mono font-bold">2026</span>
+                  كلمة المرور غير صحيحة. الرجاء التثبت وإعادة المحاولة.
                 </p>
               )}
             </div>
