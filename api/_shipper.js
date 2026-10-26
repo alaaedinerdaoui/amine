@@ -116,7 +116,7 @@ export async function handleShipper(action, req, res) {
         }],
         shipping_total: Number(order.shippingCost) || 0,
         is_cod: true,
-        auto_fulfill: false,
+        auto_fulfill: true,
         with_confirmation: true,
         store_name: 'كتاب ملخصات التاريخ والجغرافيا',
         external_order_id: String(order.orderId)
