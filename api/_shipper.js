@@ -67,7 +67,7 @@ function orderableUuid(product) {
 }
 
 // The book "كتاب ملخصات التاريخ والجغرافيا" in the Shipper account
-let cachedProductUuid = process.env.SHIPPER_PRODUCT_UUID || '698815a9-9a80-46ae-8eca-231ce87cff8d';
+let cachedProductUuid = process.env.SHIPPER_PRODUCT_UUID || '5763074f-f767-400c-ad84-578b9490129b';
 async function getProductUuid() {
   if (cachedProductUuid) return cachedProductUuid;
   const r = await shipper('/products?per_page=1');
